@@ -1,0 +1,18 @@
+EXISTING SYSTEM VS PROPOSED SYSTEM
+
+Existing System:
+- Many users track their periods manually using calendars or notes.
+- Some mobile apps exist but many do not offer AI-based predictions.
+- Limited or no forecasting of symptoms and mood.
+- Little or no personalized health insights.
+- No integrated chatbot to answer menstrual health questions.
+- Data is often locked and not customizable or open-source.
+
+Proposed System (Period Tracker):
+- Web-based period tracking platform with AI-powered predictions.
+- Predicts next period, cycle length, fertile window, and ovulation day.
+- Predicts likely symptoms and mood for a given day of the cycle.
+- Generates personalized health insights based on user history.
+- Provides a Flo-style AI chatbot for interactive support.
+- Built using HTML/CSS/JS on the frontend and Django + ML models on the backend.
+- Customizable, educational, and suitable for academic research and extension.

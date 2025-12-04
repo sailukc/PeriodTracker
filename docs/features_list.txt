@@ -1,0 +1,53 @@
+FEATURE LIST — PERIOD TRACKER
+
+1. USER FEATURES
+- User Registration
+- User Login & Logout
+- View Dashboard after login
+- Log period (start date, end date, notes)
+- View past period history
+- Calendar view with:
+  - Highlighted period days
+  - Predicted next period
+  - Predicted fertile window
+  - Predicted ovulation day
+- Log daily symptoms (cramps, headache, acne, mood swings, fatigue, bloating, etc.)
+- Log daily mood (Happy, Neutral, Irritable, Sad, Angry)
+- View Insights page:
+  - Average cycle length
+  - Cycle regularity
+  - Most frequent symptoms
+  - Mood trends
+  - Personal health insights
+- Use AI Chatbot to:
+  - Ask “When is my next period?”
+  - Ask “Am I in fertile window?”
+  - Ask “Why do I feel like this today?”
+  - Ask common menstrual health questions
+
+2. AI FEATURES
+- AI Cycle Length Prediction
+- AI Next Period Date Prediction
+- AI Fertility Window Prediction
+- AI Ovulation Day Prediction
+- AI Symptom Prediction (likely symptoms today)
+- AI Mood Prediction (likely mood today)
+- AI Health Insights Generator:
+  - “Your cycles are becoming more regular.”
+  - “Cramps have increased this month.”
+- AI Chatbot Response Engine:
+  - Uses user data + rules/ML to answer questions
+
+3. SYSTEM FEATURES
+- Frontend: HTML, CSS, JavaScript
+- Backend: Django + Django REST Framework
+- APIs for:
+  - Auth
+  - Period logs
+  - Symptoms
+  - Mood
+  - Predictions
+  - Insights
+  - Chatbot
+- Database to store all user data & predictions
+- Deployed backend + frontend

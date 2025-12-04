@@ -1,0 +1,18 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+
+# VS Code
+.vs/
+.vscode/
+
+# Node/Frontend
+node_modules/
+
+# OS files
+Thumbs.db
+.DS_Store

@@ -1,0 +1,66 @@
+BACKEND BLUEPRINT — DJANGO
+
+Planned Django App: core
+
+MODELS (planned):
+1. User
+   - use Django's built-in User model (or custom later if needed)
+
+2. PeriodLog
+   - user (ForeignKey to User)
+   - start_date (DateField)
+   - end_date (DateField)
+   - notes (TextField, optional)
+
+3. SymptomLog
+   - user (ForeignKey to User)
+   - date (DateField)
+   - symptoms (TextField or JSON format)
+
+4. MoodLog
+   - user (ForeignKey to User)
+   - date (DateField)
+   - mood (CharField)
+
+5. PredictionHistory
+   - user (ForeignKey to User)
+   - date_generated (DateTimeField)
+   - predicted_next_period (DateField)
+   - predicted_ovulation (DateField, optional)
+   - predicted_fertile_window_start (DateField, optional)
+   - predicted_fertile_window_end (DateField, optional)
+   - notes (TextField, optional)
+
+
+APIs (planned endpoints):
+
+AUTH:
+- POST /api/register/  → create new user
+- POST /api/login/     → return auth token
+- POST /api/logout/    → logout user (invalidate token)
+
+PERIOD:
+- POST /api/period/add/
+- GET  /api/period/list/
+- PUT  /api/period/update/<id>/
+- DELETE /api/period/delete/<id>/
+
+SYMPTOMS:
+- POST /api/symptoms/add/
+- GET  /api/symptoms/list/
+
+MOOD:
+- POST /api/mood/add/
+- GET  /api/mood/list/
+
+PREDICTIONS (AI):
+- GET /api/predict/cycle/
+- GET /api/predict/fertility/
+- GET /api/predict/symptoms/
+- GET /api/predict/mood/
+
+INSIGHTS:
+- GET /api/insights/
+
+CHATBOT:
+- POST /api/chatbot/

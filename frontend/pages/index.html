@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/app.js" defer></script>
+</head>
+<body>
+
+<!-- Include navbar -->
+<div id="navbar"></div>
+
+<div class="container">
+    <h2>PAGE TITLE HERE</h2>
+
+    <div class="card">
+        Content coming soon...
+    </div>
+</div>
+
+<script>
+    // Load navbar component
+    fetch("../components/navbar.html")
+        .then(res => res.text())
+        .then(data => {
+            document.getElementById("navbar").innerHTML = data;
+        });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+SYSTEM OVERVIEW
+
+The Period Tracker system follows a client–server architecture. 
+The frontend is built using HTML, CSS, and JavaScript and is responsible 
+for displaying pages such as login, registration, dashboard, calendar, 
+symptom logging, mood logging, insights, and chatbot.
+
+The backend is built using Django and Django REST Framework. It exposes 
+REST APIs for user authentication, period logs, symptom and mood logs, 
+AI predictions, insights, and chatbot responses. The backend also 
+handles database operations and communication with the AI models.
+
+AI models are implemented in Python and integrated with the Django 
+backend. These models use historical user data to predict cycle length, 
+next period date, fertile window, ovulation, probable symptoms, and mood. 
+The insights engine analyzes trends in the stored data to generate 
+personalized health insights. The chatbot module uses rule-based logic 
+and/or ML-based responses to answer user questions about their cycle 
+and health.
+
+The overall data flow is:
+User → Frontend (HTML/JS) → Django REST API → Database + AI Models → 
+Predictions & Insights → Frontend (Dashboard, Calendar, Chatbot).

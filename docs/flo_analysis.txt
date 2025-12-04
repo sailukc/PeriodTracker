@@ -1,0 +1,24 @@
+FLO APP ANALYSIS
+
+1. Dashboard:
+- What does the main screen show?
+  (example: next period date, cycle day, fertile window, insights, quick actions, etc.)
+
+2. Calendar:
+- How does the calendar highlight period days?
+- How does it show fertile window and ovulation?
+
+3. Logging:
+- What can the user log? (period start, end, symptoms, mood, notes)
+- How easy/fast is the logging process?
+
+4. AI / Predictions:
+- What kind of predictions or insights are shown to the user?
+- Does it feel personalized?
+
+5. Chatbot / Assistant:
+- What can the assistant answer? (cycle questions, symptoms, timing, etc.)
+- How is the chat UI structured?
+
+6. What I want to copy / adapt in my project:
+- (Write 4–8 bullet points about what you want to include in YOUR Period Tracker based on this.)

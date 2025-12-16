@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="../styles/style.css">
+    <script defer src="../js/period_log.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Log Your Period</h2>
+
+        <div class="card">
+            <label>Start Date:</label>
+            <input type="date" id="start_date"><br>
+
+            <label>End Date:</label>
+            <input type="date" id="end_date"><br>
+
+            <label>Cycle Length (days):</label>
+            <input type="number" id="cycle_length"><br>
+
+            <label>Flow Level:</label>
+            <select id="flow_level">
+                <option value="">Select</option>
+                <option value="light">Light</option>
+                <option value="medium">Medium</option>
+                <option value="heavy">Heavy</option>
+            </select><br>
+
+            <label>Mood:</label>
+            <input type="text" id="mood" placeholder="crampy, tired, ok..."><br>
+
+            <label>Symptoms:</label>
+            <input type="text" id="symptoms" placeholder="cramps, headache"><br>
+
+            <label>Notes:</label>
+            <textarea id="notes" rows="3"></textarea><br>
+
+            <button onclick="savePeriodLog()">Save Log</button>
+            <p id="log_msg" style="color:red;"></p>
+        </div>
+
+        <h3>Your Previous Logs</h3>
+        <div id="logs_list"></div>
+    </div>
+</body>
+</html>

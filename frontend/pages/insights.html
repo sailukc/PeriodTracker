@@ -1,29 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/app.js" defer></script>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/app.js" defer></script>
+  <script src="../js/insights.js" defer></script>
 </head>
 <body>
 
-<!-- Include navbar -->
 <div id="navbar"></div>
 
 <div class="container">
-    <h2>PAGE TITLE HERE</h2>
+  <h2>Insights</h2>
 
-    <div class="card">
-        Content coming soon...
-    </div>
+  <div class="card">
+    <h3>Cycle Summary</h3>
+    <p id="avg_cycle"></p>
+    <p id="next_prediction"></p>
+  </div>
 </div>
 
 <script>
-    // Load navbar component
-    fetch("../components/navbar.html")
-        .then(res => res.text())
-        .then(data => {
-            document.getElementById("navbar").innerHTML = data;
-        });
+  fetch("../components/navbar.html")
+    .then(r => r.text())
+    .then(html => document.getElementById("navbar").innerHTML = html);
 </script>
 
 </body>

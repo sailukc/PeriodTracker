@@ -1,22 +1,25 @@
-// Global helper functions
+document.addEventListener("DOMContentLoaded", () => {
+  loadNavbar();
+});
 
-function apiGet(url) {
-    return fetch(url, {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        }
-    }).then(res => res.json());
+async function loadNavbar() {
+  const nav = document.getElementById("navbar");
+  if (!nav) return;
+
+  try {
+    const html = await fetch("../components/navbar.html").then(r => r.text());
+    nav.innerHTML = html;
+
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        window.location.href = "login.html";
+      });
+    }
+  } catch (err) {
+    console.error("Navbar load failed:", err);
+  }
 }
-
-function apiPost(url, data) {
-    return fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data)
-    }).then(res => res.json());
-}
-
-console.log("JS loaded successfully!");

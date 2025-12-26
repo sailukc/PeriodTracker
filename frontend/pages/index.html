@@ -1,30 +1,20 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <link rel="stylesheet" href="../css/style.css">
-    <script src="../js/app.js" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Period Tracker</title>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
+  <div class="container">
+    <h2>Period Tracker</h2>
+    <div class="card"><p>Redirecting…</p></div>
+  </div>
 
-<!-- Include navbar -->
-<div id="navbar"></div>
-
-<div class="container">
-    <h2>PAGE TITLE HERE</h2>
-
-    <div class="card">
-        Content coming soon...
-    </div>
-</div>
-
-<script>
-    // Load navbar component
-    fetch("../components/navbar.html")
-        .then(res => res.text())
-        .then(data => {
-            document.getElementById("navbar").innerHTML = data;
-        });
-</script>
-
+  <script>
+    const token = localStorage.getItem("token");
+    window.location.href = token ? "dashboard.html" : "login.html";
+  </script>
 </body>
 </html>

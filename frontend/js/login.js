@@ -1,29 +1,44 @@
-function loginUser() {
-    let data = {
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value
-    };
+document.addEventListener("DOMContentLoaded", () => {
+  const msgEl = document.getElementById("login_msg");
+  const loginBtn = document.getElementById("loginBtn");
 
-    fetch("http://127.0.0.1:8000/api/login/", {
+  const setMsg = (t) => { if (msgEl) msgEl.innerText = t || ""; };
+  setMsg("");
+
+  loginBtn?.addEventListener("click", async () => {
+    setMsg("");
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!username || !password) {
+      setMsg("Please enter username and password.");
+      return;
+    }
+
+    loginBtn.disabled = true;
+
+    try {
+      const data = await fetchJSON("/api/login/", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            document.getElementById("msg").innerText = data.error;
-        } else {
-            localStorage.setItem("token", data.token);
-            localStorage.setItem("username", data.username);
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-            alert("Login Successful!");
-            window.location.href = "/frontend/pages/dashboard.html";
-alert("Login Successful!");
+      if (!data.token) {
+        setMsg("Token not received from backend.");
+        console.log("Login response:", data);
+        return;
+      }
 
-setTimeout(() => {
-    window.location.href = "./dashboard.html";
-}, 300);
-        }
-    });
-}
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("username", data.username || username);
+
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      setMsg(err.message);
+    } finally {
+      loginBtn.disabled = false;
+    }
+  });
+});

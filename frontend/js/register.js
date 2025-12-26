@@ -1,28 +1,37 @@
-function registerUser() {
-    let data = {
-        username: document.getElementById("username").value,
-        email: document.getElementById("email").value,
-        password: document.getElementById("password").value
-    };
+document.addEventListener("DOMContentLoaded", () => {
+  const msgEl = document.getElementById("message");
+  const btn = document.getElementById("registerBtn");
 
-    fetch("http://127.0.0.1:8000/api/register/", {
+  const setMsg = (t) => { if (msgEl) msgEl.innerText = t || ""; };
+  setMsg("");
+
+  btn?.addEventListener("click", async () => {
+    setMsg("");
+
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (!username || !email || !password) {
+      setMsg("Please fill all fields.");
+      return;
+    }
+
+    btn.disabled = true;
+
+    try {
+      await fetchJSON("/api/register/", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(data)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            document.getElementById("message").innerText = data.error;
-        } else {
-            alert("Registration Successful!");
-           window.location.href = "/frontend/pages/login.html";
-alert("Registration Successful!");
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-setTimeout(() => {
-    window.location.href = "./login.html";
-}, 300);
-
-        }
-    });
-}
+      alert("Registration successful! Please login.");
+      window.location.href = "login.html";
+    } catch (err) {
+      setMsg(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});

@@ -1,51 +1,165 @@
-:root {
-    --primary: #ff6fa8;
-    --primary-light: #ff9ec3;
-    --bg: #fff6fa;
-    --text-dark: #333;
-    --text-light: #666;
-    --card-bg: #ffffff;
-    --border: #ffd3e5;
-    --radius: 12px;
-    --shadow: 0 4px 12px rgba(255, 110, 167, 0.15);
+:root{
+  --primary:#ff6fa8;
+  --primary-light:#ff9ec3;
+  --bg:#fff6fa;
+  --text-dark:#333;
+  --text-light:#666;
+  --card-bg:#ffffff;
+  --border:#ffd3e5;
+  --radius:12px;
+  --shadow:0 10px 25px rgba(0,0,0,.08);
 }
 
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Poppins', sans-serif;
-    background: var(--bg);
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  padding:0;
+  font-family:'Poppins', sans-serif;
+  background:var(--bg);
+  color:var(--text-dark);
 }
 
-.container {
-    width: 90%;
-    margin: auto;
-    padding-top: 20px;
+.container{
+  width:min(1000px, 92%);
+  margin:auto;
+  padding:22px 0;
 }
 
-.card {
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    margin-bottom: 20px;
+h1,h2,h3{
+  color:var(--primary);
+  margin:10px 0 12px;
 }
 
-h1, h2, h3 {
-    color: var(--primary);
+p{ color:var(--text-dark); }
+
+a{
+  color:var(--primary);
+  text-decoration:none;
+  font-weight:600;
+}
+a:hover{ text-decoration:underline; }
+
+/* Cards */
+.card{
+  background:var(--card-bg);
+  padding:18px;
+  border-radius:14px;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(255, 211, 229, .7);
+  margin-bottom:18px;
 }
 
-button {
-    background: var(--primary);
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-weight: bold;
-    transition: 0.2s;
+/* Buttons */
+button, .btn{
+  background:var(--primary);
+  color:#fff;
+  padding:10px 16px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+  transition:transform .08s ease, background .2s ease;
+}
+button:hover, .btn:hover{
+  background:var(--primary-light);
+}
+button:active, .btn:active{
+  transform:scale(.98);
+}
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
 }
 
-button:hover {
-    background: var(--primary-light);
+/* Inputs */
+input, select, textarea{
+  width:100%;
+  border-radius:10px;
+  padding:10px 12px;
+  border:1px solid #ddd;
+  outline:none;
+  margin:6px 0 12px;
+  background:#fff;
+}
+input:focus, select:focus, textarea:focus{
+  border-color:var(--primary-light);
+  box-shadow:0 0 0 3px rgba(255, 110, 167, .15);
+}
+
+label{
+  display:block;
+  font-weight:600;
+  margin-top:8px;
+  color:var(--text-dark);
+}
+
+/* Messages */
+#log_msg, #cal_msg, #ins_msg, #login_msg, #message{
+  margin-top:10px;
+  font-weight:600;
+}
+
+/* Navbar (your navbar.html also has styles; these are safe defaults) */
+.navbar{
+  background:#fff;
+  padding:14px 16px;
+  display:flex;
+  gap:14px;
+  justify-content:space-around;
+  border-bottom:2px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+.navbar a{
+  color:var(--text-dark);
+  font-weight:700;
+}
+.navbar a:hover{
+  color:var(--primary);
+}
+
+/* Calendar */
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7, 1fr);
+  gap:8px;
+  margin-top:12px;
+}
+
+.day-cell{
+  padding:10px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  text-align:center;
+  background:#fff;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.day-name{
+  font-weight:800;
+  background:#f7f7f7;
+  border-color:#eee;
+}
+
+.period-day{
+  background:#ffd6e5;
+  border-color:#ff7aa6;
+  font-weight:900;
+}
+
+/* Small screen improvements */
+@media (max-width: 720px){
+  .navbar{
+    justify-content:flex-start;
+    overflow-x:auto;
+    white-space:nowrap;
+  }
+  .navbar a{
+    flex:0 0 auto;
+  }
 }

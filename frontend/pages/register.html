@@ -1,27 +1,37 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <link rel="stylesheet" href="../css/style.css">
-    <script defer src="../js/register.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Register • Period Tracker</title>
+  <link rel="stylesheet" href="../css/style.css" />
+
+  <link rel="stylesheet" href="../css/style.css">
+
+<script defer src="../js/config.js"></script>
+<script defer src="../js/auth.js"></script>
+<script defer src="../js/register.js"></script>
+
 </head>
-
 <body>
-
-<div class="container">
+  <div class="container">
     <h2>Create Account</h2>
 
     <div class="card">
-        <input type="text" id="username" placeholder="Username"><br><br>
-        <input type="email" id="email" placeholder="Email"><br><br>
-        <input type="password" id="password" placeholder="Password"><br><br>
+      <label>Username</label>
+      <input id="username" type="text" placeholder="Choose username" />
 
-        <button onclick="registerUser()">Register</button><br><br>
+      <label>Email</label>
+      <input id="email" type="email" placeholder="Enter email" />
 
-        <p>Already have an account? <a href="login.html">Login</a></p>
+      <label>Password</label>
+      <input id="password" type="password" placeholder="Create password" />
 
-        <p id="message" style="color:red;"></p>
+      <button type="button" id="registerBtn">Register</button>
+
+      <p id="message" style="color:red; margin-top:10px;"></p>
+      <p style="margin-top:10px;">Already have an account? <a href="login.html">Login</a></p>
     </div>
-</div>
-
+  </div>
 </body>
 </html>

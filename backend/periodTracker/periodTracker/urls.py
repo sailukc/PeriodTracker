@@ -1,13 +1,13 @@
 from django.contrib import admin
 from django.urls import path
-from core.views import register_user, login_user, period_logs, delete_period_log
+from core import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    path("api/register/", register_user),
-    path("api/login/", login_user),
+    path("api/register/", views.register_user),
+    path("api/login/", views.login_user),
 
-    path("api/period-logs/", period_logs),
-    path("api/period-logs/<int:pk>/", delete_period_log),
+    path("api/period-logs/", views.period_logs),
+    path("api/period-logs/<int:pk>/", views.delete_period_log),
 ]

@@ -1,33 +1,35 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <link rel="stylesheet" href="../css/style.css">
-  <script src="../js/app.js" defer></script>
-  <script src="../js/calendar.js" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Calendar • Period Tracker</title>
+  <link rel="stylesheet" href="../css/style.css" />
+
+  <script defer src="../js/config.js"></script>
+  <script defer src="../js/api.js"></script>
+  <script defer src="../js/auth.js"></script>
+  <script defer src="../js/app.js"></script>
+  <script defer src="../js/calendar.js"></script>
 </head>
 <body>
+  <div id="navbar"></div>
 
-<div id="navbar"></div>
+  <div class="container">
+    <h2>Calendar</h2>
 
-<div class="container">
-  <h2>Calendar</h2>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" id="prevBtn">◀</button>
+        <h3 id="monthTitle" style="margin:0;"></h3>
+        <button type="button" id="nextBtn">▶</button>
+      </div>
 
-  <div class="card">
-    <div id="calendar_controls" style="display:flex; justify-content:space-between; align-items:center;">
-      <button id="prev_month">◀</button>
-      <h3 id="month_title"></h3>
-      <button id="next_month">▶</button>
+      <div id="calendarGrid" class="calendar-grid"></div>
+      <p id="cal_msg" style="color:red;"></p>
     </div>
-
-    <div id="calendar_grid"></div>
   </div>
-</div>
 
-<script>
-  fetch("../components/navbar.html")
-    .then(r => r.text())
-    .then(html => document.getElementById("navbar").innerHTML = html);
-</script>
-
+  <script>requireAuth();</script>
 </body>
 </html>

@@ -1,145 +1,111 @@
-const API_BASE = "http://127.0.0.1:8000";
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!requireAuth()) return;
 
-function getToken() {
-  return localStorage.getItem("token");
-}
+  const monthTitle = document.getElementById("monthTitle");
+  const grid = document.getElementById("calendarGrid");
+  const calMsg = document.getElementById("cal_msg");
 
-function authHeaders() {
-  const token = getToken();
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Token ${token}`
-  };
-}
+  let current = new Date();
 
-function requireLogin() {
-  const token = getToken();
-  if (!token) {
-    alert("Please login first");
-    window.location.href = "login.html";
-    return false;
-  }
-  return true;
-}
-
-// --- Calendar rendering helpers ---
-let current = new Date();
-
-function fmtDate(d) {
-  // YYYY-MM-DD
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function parseDate(s) {
-  // s = "YYYY-MM-DD"
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function dateInRange(day, start, end) {
-  return day >= start && day <= end;
-}
-
-function buildCalendarGrid(monthDate, logs) {
-  const grid = document.getElementById("calendar_grid");
-  grid.innerHTML = "";
-
-  grid.style.display = "grid";
-  grid.style.gridTemplateColumns = "repeat(7, 1fr)";
-  grid.style.gap = "8px";
-
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-
-  document.getElementById("month_title").innerText =
-    monthDate.toLocaleString(undefined, { month: "long", year: "numeric" });
-
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-
-  const startOffset = first.getDay(); // 0 Sun .. 6 Sat
-  const totalDays = last.getDate();
-
-  // Day labels
-  const labels = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  labels.forEach(l => {
-    const el = document.createElement("div");
-    el.innerText = l;
-    el.style.fontWeight = "700";
-    grid.appendChild(el);
+  document.getElementById("prevBtn")?.addEventListener("click", () => {
+    current.setMonth(current.getMonth() - 1);
+    render();
   });
 
-  // Empty slots before day 1
-  for (let i = 0; i < startOffset; i++) {
-    const empty = document.createElement("div");
-    grid.appendChild(empty);
+  document.getElementById("nextBtn")?.addEventListener("click", () => {
+    current.setMonth(current.getMonth() + 1);
+    render();
+  });
+
+  const setMsg = (t) => { if (calMsg) calMsg.innerText = t || ""; };
+
+  const ymd = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  function rangeDates(start, end) {
+    const out = [];
+    let d = new Date(start);
+    while (d <= end) {
+      out.push(ymd(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
   }
 
-  // Days
-  for (let d = 1; d <= totalDays; d++) {
-    const cellDate = new Date(year, month, d);
-
-    const cell = document.createElement("div");
-    cell.className = "card";
-    cell.style.padding = "10px";
-    cell.style.minHeight = "60px";
-    cell.innerHTML = `<strong>${d}</strong>`;
-
-    // mark if it falls within any period log range
-    const isPeriodDay = logs.some(log => {
-      const s = parseDate(log.start_date);
-      const e = parseDate(log.end_date);
-      return dateInRange(cellDate, s, e);
+  async function getPeriodDaysSet() {
+    const logs = await fetchJSON("/api/period-logs/", {
+      method: "GET",
+      headers: authHeaders(),
     });
 
-    if (isPeriodDay) {
-      cell.style.border = "2px solid #ff4d88";
-      cell.style.background = "#ffe6ef";
-      const tag = document.createElement("div");
-      tag.innerText = "Period";
-      tag.style.marginTop = "6px";
-      tag.style.fontSize = "12px";
-      cell.appendChild(tag);
+    const days = new Set();
+    logs.forEach((log) => {
+      if (!log.start_date || !log.end_date) return;
+      const s = new Date(log.start_date);
+      const e = new Date(log.end_date);
+      rangeDates(s, e).forEach((d) => days.add(d));
+    });
+
+    return days;
+  }
+
+  async function render() {
+    setMsg("");
+    grid.innerHTML = "";
+
+    const year = current.getFullYear();
+    const month = current.getMonth();
+
+    if (monthTitle) {
+      monthTitle.innerText = current.toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
     }
 
-    grid.appendChild(cell);
+    const first = new Date(year, month, 1);
+    const startDay = first.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    names.forEach((n) => {
+      const el = document.createElement("div");
+      el.className = "day-cell day-name";
+      el.innerText = n;
+      grid.appendChild(el);
+    });
+
+    for (let i = 0; i < startDay; i++) {
+      const blank = document.createElement("div");
+      blank.className = "day-cell";
+      blank.innerHTML = "&nbsp;";
+      grid.appendChild(blank);
+    }
+
+    let periodDays = new Set();
+    try {
+      periodDays = await getPeriodDaysSet();
+    } catch (e) {
+      setMsg(e.message);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month, day);
+      const key = ymd(dateObj);
+
+      const cell = document.createElement("div");
+      cell.className = "day-cell";
+      cell.innerText = day;
+
+      if (periodDays.has(key)) cell.classList.add("period-day");
+
+      grid.appendChild(cell);
+    }
   }
-}
 
-async function fetchLogs() {
-  const res = await fetch(`${API_BASE}/api/period-logs/`, {
-    method: "GET",
-    headers: authHeaders()
-  });
-  if (res.status === 401) {
-    alert("Session expired. Please login again.");
-    localStorage.removeItem("token");
-    window.location.href = "login.html";
-    return [];
-  }
-  return await res.json();
-}
-
-async function render() {
-  const logs = await fetchLogs();
-  buildCalendarGrid(current, logs);
-}
-
-window.addEventListener("load", async () => {
-  if (!requireLogin()) return;
-
-  document.getElementById("prev_month").addEventListener("click", async () => {
-    current = new Date(current.getFullYear(), current.getMonth() - 1, 1);
-    await render();
-  });
-
-  document.getElementById("next_month").addEventListener("click", async () => {
-    current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
-    await render();
-  });
-
-  await render();
+  render();
 });

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PeriodLog
+from .models import PeriodLog, UserProfile, ChatMessage
 
 class PeriodLogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,3 +23,11 @@ class PeriodLogSerializer(serializers.ModelSerializer):
         if start and end and end < start:
             raise serializers.ValidationError({"end_date": "End date cannot be before start date."})
         return attrs
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ("tone", "nickname")
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ["id", "role", "content", "created_at"]        

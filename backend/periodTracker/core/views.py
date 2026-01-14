@@ -1,35 +1,59 @@
 import os
 from datetime import date
+
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.authtoken.models import Token
-from openai import OpenAI
-from .models import PeriodLog, UserProfile, ChatMessage
-from .serializers import PeriodLogSerializer, UserProfileSerializer
-from datetime import timedelta
-from collections import Counter
-from .models import MoodLog
-from .serializers import MoodLogSerializer
-from .models import SymptomLog
-from .serializers import SymptomLogSerializer
 
-import math
+# ✅ Gemini SDK
+from google import genai
+
+from .models import (
+    PeriodLog, UserProfile, ChatMessage,
+    MoodLog, SymptomLog
+)
+
+from .serializers import (
+    PeriodLogSerializer, UserProfileSerializer,
+    MoodLogSerializer, SymptomLogSerializer
+)
 
 
-
-# -------------------- OpenAI Helper --------------------
-def get_openai_client():
-    api_key = os.getenv("OPENAI_API_KEY")
+# ---------------------------
+# Gemini helpers
+# ---------------------------
+def get_gemini_client():
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return None
-    return OpenAI(api_key=api_key)
+    return genai.Client(api_key=api_key)
 
 
-# -------------------- Period Context Helpers --------------------
+def gemini_text(system_text: str, user_text: str, model: str = "gemini-2.5-flash"):
+    client = get_gemini_client()
+    if client is None:
+        return None, "GEMINI_API_KEY is not set on the server."
+
+    prompt = f"{system_text}\n\nUSER:\n{user_text}"
+
+    try:
+        resp = client.models.generate_content(
+            model=model,
+            contents=prompt
+        )
+        return (resp.text or "").strip(), None
+    except Exception as e:
+        return None, str(e)
+
+
+# ---------------------------
+# Utility for personalization
+# ---------------------------
 def _parse_ymd(s: str):
     y, m, d = [int(x) for x in s.split("-")]
     return date(y, m, d)
@@ -46,14 +70,18 @@ def _safe_avg(nums):
 
 
 def build_user_context(user):
-    logs = PeriodLog.objects.filter(user=user).order_by("-start_date")[:10]
-    logs = list(logs)
+    logs = list(PeriodLog.objects.filter(user=user).order_by("-start_date")[:10])
+
+    prof = getattr(user, "profile", None)
+    nickname = prof.nickname if prof and prof.nickname else user.username
+    tone = prof.tone if prof else "friendly"
 
     if not logs:
-        return "No period logs yet."
+        return f"User nickname: {nickname}\nPreferred tone: {tone}\nNo period logs yet."
 
     logs_sorted = sorted(logs, key=lambda x: x.start_date)
 
+    # period length = end-start+1
     period_lengths = []
     for l in logs_sorted:
         if l.start_date and l.end_date:
@@ -61,6 +89,7 @@ def build_user_context(user):
             e = _parse_ymd(str(l.end_date))
             period_lengths.append(_days_between(s, e) + 1)
 
+    # cycle length = next_start - current_start
     cycle_lengths = []
     for i in range(len(logs_sorted) - 1):
         s1 = _parse_ymd(str(logs_sorted[i].start_date))
@@ -80,19 +109,21 @@ def build_user_context(user):
             recent_text.append(f"mood: {l.mood}")
         if l.symptoms:
             recent_text.append(f"symptoms: {l.symptoms}")
-    recent_summary = "; ".join(recent_text) if recent_text else "No recent mood/symptom notes."
+    recent_summary = "; ".join(recent_text) if recent_text else "No recent notes."
 
     return (
-        f"User tracking summary:\n"
-        f"- Average cycle length: {avg_cycle if avg_cycle is not None else 'unknown'} days\n"
-        f"- Average period length: {avg_period if avg_period is not None else 'unknown'} days\n"
-        f"- Last period: {last_start} to {last_end}\n"
-        f"- Recent notes: {recent_summary}\n"
-        f"Use this info to personalize answers."
+        f"User nickname: {nickname}\n"
+        f"Preferred tone: {tone}\n"
+        f"Average cycle length: {avg_cycle if avg_cycle is not None else 'unknown'} days\n"
+        f"Average period length: {avg_period if avg_period is not None else 'unknown'} days\n"
+        f"Last period: {last_start} to {last_end}\n"
+        f"Recent notes: {recent_summary}\n"
     )
 
 
-# -------------------- Auth --------------------
+# ---------------------------
+# Auth endpoints
+# ---------------------------
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -101,17 +132,19 @@ def register_user(request):
     password = request.data.get("password", "")
 
     if not username or not email or not password:
-        return Response({"error": "username, email and password are required"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "username, email and password are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     if User.objects.filter(username=username).exists():
-        return Response({"error": "Username already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Username already exists"}, status=400)
 
     if User.objects.filter(email=email).exists():
-        return Response({"error": "Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Email already exists"}, status=400)
 
     User.objects.create_user(username=username, email=email, password=password)
-    return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
+    return Response({"message": "User registered successfully"}, status=201)
 
 
 @api_view(["POST"])
@@ -121,18 +154,19 @@ def login_user(request):
     password = request.data.get("password", "")
 
     if not username or not password:
-        return Response({"error": "username and password are required"},
-                        status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "username and password are required"}, status=400)
 
     user = authenticate(username=username, password=password)
     if user is None:
-        return Response({"error": "Invalid username or password"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Invalid username or password"}, status=400)
 
     token, _ = Token.objects.get_or_create(user=user)
-    return Response({"token": token.key, "username": user.username}, status=status.HTTP_200_OK)
+    return Response({"token": token.key, "username": user.username}, status=200)
 
 
-# -------------------- Profile --------------------
+# ---------------------------
+# Profile endpoints
+# ---------------------------
 @api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
 def profile(request):
@@ -149,21 +183,22 @@ def profile(request):
     return Response(ser.errors, status=400)
 
 
-# -------------------- Period Logs --------------------
+# ---------------------------
+# Period logs endpoints
+# ---------------------------
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def period_logs(request):
     if request.method == "GET":
         logs = PeriodLog.objects.filter(user=request.user).order_by("-start_date")
-        serializer = PeriodLogSerializer(logs, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(PeriodLogSerializer(logs, many=True).data, status=200)
 
-    serializer = PeriodLogSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save(user=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    ser = PeriodLogSerializer(data=request.data)
+    if ser.is_valid():
+        ser.save(user=request.user)
+        return Response(ser.data, status=201)
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(ser.errors, status=400)
 
 
 @api_view(["DELETE"])
@@ -172,51 +207,21 @@ def delete_period_log(request, pk):
     try:
         log = PeriodLog.objects.get(pk=pk, user=request.user)
     except PeriodLog.DoesNotExist:
-        return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Not found"}, status=404)
 
     log.delete()
-    return Response({"message": "Deleted"}, status=status.HTTP_200_OK)
+    return Response({"message": "Deleted"}, status=200)
 
 
+# ---------------------------
+# Chat endpoints
+# ---------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def chat_history(request):
-    limit = int(request.GET.get("limit", 30))
-    msgs = ChatMessage.objects.filter(user=request.user).order_by("-created_at")[:limit]
-    msgs = list(reversed(msgs))  # return oldest -> newest
-
-    data = [
-        {
-            "role": m.role,
-            "content": m.content,
-            "created_at": m.created_at.isoformat(),
-        }
-        for m in msgs
-    ]
+    msgs = ChatMessage.objects.filter(user=request.user).order_by("created_at")[:200]
+    data = [{"role": m.role, "content": m.content, "created_at": m.created_at} for m in msgs]
     return Response(data, status=200)
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def chat_clear(request):
-    ChatMessage.objects.filter(user=request.user).delete()
-    return Response({"message": "Chat cleared"}, status=200)
-
-# -------------------- Chatbot (SAVE + FALLBACK) --------------------
-def fallback_reply(prompt: str, tone: str = "friendly") -> str:
-    base = {
-        "gentle": "I’m here with you 💛 ",
-        "friendly": "Got you 🙂 ",
-        "direct": "Okay. ",
-    }.get(tone, "Got you 🙂 ")
-
-    tips = (
-        "For period cramps, quick options: warm heat pad, gentle stretching, hydration, "
-        "and rest. Some people find OTC pain relief helpful (only if safe for you). "
-        "If pain is severe, sudden, or unusual, or you have heavy bleeding/fainting/fever, please see a clinician."
-    )
-    if len(prompt.strip()) <= 3:
-        return base + "Hi! Tell me what you’re feeling and I’ll help. " + tips
-    return base + tips
 
 
 @api_view(["POST"])
@@ -224,20 +229,10 @@ def fallback_reply(prompt: str, tone: str = "friendly") -> str:
 def chatbot(request):
     prompt = request.data.get("prompt", "").strip()
     if not prompt:
-        return Response({"error": "prompt is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "prompt is required"}, status=400)
 
-    # Save USER message first
+    # Save user message
     ChatMessage.objects.create(user=request.user, role="user", content=prompt)
-
-    # Load tone from profile
-    prof, _ = UserProfile.objects.get_or_create(user=request.user)
-    tone = prof.tone
-
-    client = get_openai_client()
-    if client is None:
-        reply = fallback_reply(prompt, tone=tone)
-        ChatMessage.objects.create(user=request.user, role="assistant", content=reply)
-        return Response({"reply": reply, "source": "fallback"}, status=200)
 
     user_context = build_user_context(request.user)
 
@@ -246,164 +241,77 @@ def chatbot(request):
         "Rules:\n"
         "- Be supportive and medically cautious.\n"
         "- You are not a doctor.\n"
-        "- If the user has severe pain, heavy bleeding, fainting, fever, pregnancy concern, "
-        "or urgent symptoms, advise seeking a clinician.\n"
-        "- Personalize using user tracking summary.\n"
-        "- Keep answers clear and practical.\n"
+        "- If severe pain, heavy bleeding, fainting, fever, pregnancy concern, or urgent symptoms: advise clinician.\n"
+        "- Personalize using the user context.\n"
+        "- Keep answers clear, short, practical.\n"
     )
 
-    try:
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "system", "content": f"Tone preference: {tone}"},
-                {"role": "system", "content": user_context},
-                {"role": "user", "content": prompt},
-            ],
-        )
+    user_text = f"USER CONTEXT:\n{user_context}\n\nUSER QUESTION:\n{prompt}"
 
-        reply = resp.choices[0].message.content.strip()
-        if not reply:
-            reply = fallback_reply(prompt, tone=tone)
+    reply, err = gemini_text(system_msg, user_text, model="gemini-2.5-flash")
+    if err:
+        ChatMessage.objects.create(user=request.user, role="assistant", content=f"[AI error] {err}")
+        return Response({"error": f"AI error: {err}"}, status=500)
 
-        # Save ASSISTANT message
-        ChatMessage.objects.create(user=request.user, role="assistant", content=reply)
+    if not reply:
+        reply = "Sorry, I couldn’t generate a reply right now."
 
-        return Response({"reply": reply, "source": "openai"}, status=200)
+    ChatMessage.objects.create(user=request.user, role="assistant", content=reply)
+    return Response({"reply": reply}, status=200)
 
-    except Exception:
-        # If OpenAI fails (quota/network/key), we fallback but STILL SAVE
-        reply = fallback_reply(prompt, tone=tone)
-        ChatMessage.objects.create(user=request.user, role="assistant", content=reply)
-        return Response(
-            {"reply": reply, "source": "fallback"},
-            status=200
-        )
 
+# ---------------------------
+# AI Insights endpoint
+# ---------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def insights(request):
-    logs = list(PeriodLog.objects.filter(user=request.user).order_by("start_date"))
+def ai_insights(request):
+    user_context = build_user_context(request.user)
 
-    if len(logs) < 2:
-        return Response({"error": "Add at least 2 logs to generate insights."}, status=400)
+    system_msg = (
+        "You generate short health tracking insights for a period tracker.\n"
+        "Rules:\n"
+        "- Use ONLY the given tracking info.\n"
+        "- Give 3 to 6 bullet points.\n"
+        "- Add 1 safety note: see doctor if symptoms are severe.\n"
+        "- No diagnosis.\n"
+        "- Friendly tone.\n"
+    )
 
-    # --- cycle lengths ---
-    cycle_lengths = []
-    for i in range(len(logs) - 1):
-        cycle_lengths.append((logs[i+1].start_date - logs[i].start_date).days)
+    prompt = f"Generate insights from this:\n{user_context}"
 
-    avg_cycle = sum(cycle_lengths) / len(cycle_lengths)
+    reply, err = gemini_text(system_msg, prompt, model="gemini-2.5-flash")
+    if err:
+        return Response({"error": f"AI error: {err}"}, status=500)
 
-    # Std deviation -> confidence
-    if len(cycle_lengths) >= 2:
-        variance = sum((x - avg_cycle) ** 2 for x in cycle_lengths) / (len(cycle_lengths) - 1)
-        std = math.sqrt(variance)
-    else:
-        std = 0
+    return Response({"insights": reply}, status=200)
 
-    # Confidence mapping (lower std => higher confidence)
-    if std <= 1:
-        confidence = "Very High"
-    elif std <= 3:
-        confidence = "High"
-    elif std <= 6:
-        confidence = "Medium"
-    else:
-        confidence = "Low"
 
-    # --- period lengths ---
-    period_lengths = []
-    for l in logs:
-        if l.end_date:
-            period_lengths.append((l.end_date - l.start_date).days + 1)
-
-    avg_period = sum(period_lengths) / len(period_lengths) if period_lengths else 5
-
-    last_start = logs[-1].start_date
-    next_period = last_start + timedelta(days=round(avg_cycle))
-
-    # ovulation estimate
-    ovulation = next_period - timedelta(days=14)
-
-    fertile_start = ovulation - timedelta(days=5)
-    fertile_end = ovulation + timedelta(days=1)
-
-    # Mood & symptoms (top from recent 10 logs)
-    moods = [l.mood.strip().lower() for l in logs[-10:] if l.mood.strip()]
-    symptoms = []
-    for l in logs[-10:]:
-        if l.symptoms.strip():
-            symptoms += [s.strip().lower() for s in l.symptoms.split(",") if s.strip()]
-
-    top_moods = [m for m, _ in Counter(moods).most_common(3)]
-    top_symptoms = [s for s, _ in Counter(symptoms).most_common(5)]
-
-    # Phase description
-    today = date.today()
-    days_until_period = (next_period - today).days
-
-    if days_until_period < 0:
-        phase = "Late cycle / period might be due"
-    elif days_until_period <= 5:
-        phase = "PMS phase likely"
-    elif fertile_start <= today <= fertile_end:
-        phase = "Fertile window"
-    else:
-        phase = "Normal cycle phase"
-
-    return Response({
-        "avg_cycle": round(avg_cycle, 1),
-        "avg_period": round(avg_period, 1),
-        "std_cycle": round(std, 1),
-        "confidence": confidence,
-
-        "next_period": str(next_period),
-        "days_until_period": days_until_period,
-
-        "ovulation": str(ovulation),
-        "fertile_window": {
-            "start": str(fertile_start),
-            "end": str(fertile_end)
-        },
-
-        "phase": phase,
-        "predicted_moods": top_moods,
-        "predicted_symptoms": top_symptoms,
-    })
+# ---------------------------
+# Mood Logs endpoints
+# ---------------------------
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def mood_logs(request):
-    """
-    GET  -> list current user's mood logs
-    POST -> create a mood log (one per day due to unique_together)
-    """
     if request.method == "GET":
         logs = MoodLog.objects.filter(user=request.user).order_by("-date")
         return Response(MoodLogSerializer(logs, many=True).data, status=200)
 
-    # POST
     ser = MoodLogSerializer(data=request.data)
     if not ser.is_valid():
         return Response(ser.errors, status=400)
 
-    # Save with user
     try:
-        mood_obj = MoodLog.objects.create(
+        obj = MoodLog.objects.create(
             user=request.user,
             date=ser.validated_data["date"],
             mood=ser.validated_data["mood"],
             intensity=ser.validated_data.get("intensity", 5),
             note=ser.validated_data.get("note", ""),
         )
-        return Response(MoodLogSerializer(mood_obj).data, status=201)
+        return Response(MoodLogSerializer(obj).data, status=201)
     except Exception:
-        # likely unique_together conflict
-        return Response(
-            {"error": "Mood for this date already exists. Edit or delete it."},
-            status=400
-        )
+        return Response({"error": "Mood for this date already exists."}, status=400)
 
 
 @api_view(["PUT", "DELETE"])
@@ -418,12 +326,16 @@ def mood_log_detail(request, pk):
         log.delete()
         return Response({"message": "Deleted"}, status=200)
 
-    # PUT
     ser = MoodLogSerializer(log, data=request.data, partial=True)
     if ser.is_valid():
         ser.save()
         return Response(ser.data, status=200)
     return Response(ser.errors, status=400)
+
+
+# ---------------------------
+# Symptom Logs endpoints
+# ---------------------------
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def symptom_logs(request):
@@ -441,10 +353,9 @@ def symptom_logs(request):
             date=ser.validated_data["date"],
             symptoms=ser.validated_data.get("symptoms", []),
             severity=ser.validated_data.get("severity", 5),
-            note=ser.validated_data.get("note", "")
+            note=ser.validated_data.get("note", ""),
         )
         return Response(SymptomLogSerializer(obj).data, status=201)
-
     except Exception:
         return Response({"error": "Symptoms for this date already exist."}, status=400)
 
@@ -459,3 +370,9 @@ def delete_symptom_log(request, pk):
 
     log.delete()
     return Response({"message": "Deleted"}, status=200)
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def chat_clear(request):
+    ChatMessage.objects.filter(user=request.user).delete()
+    return Response({"message": "Chat cleared"}, status=200)
+

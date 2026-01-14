@@ -5,7 +5,8 @@ from core.views import (
     login_user,
     period_logs,
     delete_period_log,
-    chatbot,profile,chat_history, chat_clear,ai_insights,
+    chatbot,profile,chat_history, chat_clear, insights, mood_logs, mood_log_detail, symptom_logs, delete_symptom_log
+
 )
 
 urlpatterns = [
@@ -20,6 +21,11 @@ urlpatterns = [
     path("api/chat/history/", chat_history),
     path("api/chatbot/", chatbot),
     path("api/chat/clear/", chat_clear),
-    path("api/ai/insights/", ai_insights),
+    path("api/insights/", insights),
+    path("api/mood-logs/", mood_logs),
+    path("api/mood-logs/<int:pk>/", mood_log_detail),
+    path("api/symptom-logs/", symptom_logs),
+    path("api/symptom-logs/<int:pk>/", delete_symptom_log),
+
 
 ]

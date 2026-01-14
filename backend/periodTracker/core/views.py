@@ -12,6 +12,12 @@ from .models import PeriodLog, UserProfile, ChatMessage
 from .serializers import PeriodLogSerializer, UserProfileSerializer
 from datetime import timedelta
 from collections import Counter
+from .models import MoodLog
+from .serializers import MoodLogSerializer
+from .models import SymptomLog
+from .serializers import SymptomLogSerializer
+
+import math
 
 
 
@@ -277,115 +283,179 @@ def chatbot(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def ai_insights(request):
-    user = request.user
-    logs = PeriodLog.objects.filter(user=user).order_by("start_date")
+def insights(request):
+    logs = list(PeriodLog.objects.filter(user=request.user).order_by("start_date"))
 
-    if logs.count() < 2:
-        return Response({
-            "error": "Add at least 2 period logs to generate insights."
-        }, status=400)
+    if len(logs) < 2:
+        return Response({"error": "Add at least 2 logs to generate insights."}, status=400)
 
-    # --- Calculate cycle lengths ---
-    start_dates = [l.start_date for l in logs if l.start_date]
+    # --- cycle lengths ---
     cycle_lengths = []
-    for i in range(len(start_dates) - 1):
-        cycle_lengths.append((start_dates[i+1] - start_dates[i]).days)
+    for i in range(len(logs) - 1):
+        cycle_lengths.append((logs[i+1].start_date - logs[i].start_date).days)
 
-    avg_cycle = round(sum(cycle_lengths) / len(cycle_lengths), 1)
+    avg_cycle = sum(cycle_lengths) / len(cycle_lengths)
 
-    # --- Period lengths ---
+    # Std deviation -> confidence
+    if len(cycle_lengths) >= 2:
+        variance = sum((x - avg_cycle) ** 2 for x in cycle_lengths) / (len(cycle_lengths) - 1)
+        std = math.sqrt(variance)
+    else:
+        std = 0
+
+    # Confidence mapping (lower std => higher confidence)
+    if std <= 1:
+        confidence = "Very High"
+    elif std <= 3:
+        confidence = "High"
+    elif std <= 6:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
+
+    # --- period lengths ---
     period_lengths = []
     for l in logs:
         if l.end_date:
             period_lengths.append((l.end_date - l.start_date).days + 1)
-    avg_period = round(sum(period_lengths) / len(period_lengths), 1) if period_lengths else None
 
-    # --- Next period prediction ---
-    last_start = logs.last().start_date
-    predicted_next = last_start + timedelta(days=round(avg_cycle))
+    avg_period = sum(period_lengths) / len(period_lengths) if period_lengths else 5
 
-    # --- Fertility window (simple estimation) ---
-    # ovulation ~ 14 days before next period
-    ovulation = predicted_next - timedelta(days=14)
+    last_start = logs[-1].start_date
+    next_period = last_start + timedelta(days=round(avg_cycle))
+
+    # ovulation estimate
+    ovulation = next_period - timedelta(days=14)
+
     fertile_start = ovulation - timedelta(days=5)
     fertile_end = ovulation + timedelta(days=1)
 
-    # --- Mood & symptom trends ---
-    moods = []
+    # Mood & symptoms (top from recent 10 logs)
+    moods = [l.mood.strip().lower() for l in logs[-10:] if l.mood.strip()]
     symptoms = []
-    for l in logs.order_by("-start_date")[:10]:
-        if l.mood:
-            moods.append(l.mood.strip().lower())
-        if l.symptoms:
+    for l in logs[-10:]:
+        if l.symptoms.strip():
             symptoms += [s.strip().lower() for s in l.symptoms.split(",") if s.strip()]
 
     top_moods = [m for m, _ in Counter(moods).most_common(3)]
     top_symptoms = [s for s, _ in Counter(symptoms).most_common(5)]
 
-    # --- Safety warnings (basic) ---
-    warnings = []
-    if avg_cycle < 21 or avg_cycle > 35:
-        warnings.append("Your cycle length looks outside the typical 21–35 day range. If this continues, consider talking to a clinician.")
-    if avg_period and avg_period > 8:
-        warnings.append("Your period length seems longer than 7–8 days. If heavy or persistent, consider medical advice.")
+    # Phase description
+    today = date.today()
+    days_until_period = (next_period - today).days
 
-    # --- Optional OpenAI-generated insight summary ---
-    prof, _ = UserProfile.objects.get_or_create(user=user)
-    tone = prof.tone
-
-    ai_text = None
-    client = get_openai_client()
-
-    if client:
-        try:
-            prompt = f"""
-Generate short personalized period tracking insights in a {tone} tone.
-
-Stats:
-- Average cycle: {avg_cycle} days
-- Average period: {avg_period} days
-- Next period: {predicted_next}
-- Ovulation estimate: {ovulation}
-- Fertile window: {fertile_start} to {fertile_end}
-- Top moods: {top_moods}
-- Top symptoms: {top_symptoms}
-
-Write 4-6 bullet points. Be medically cautious.
-"""
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a period tracker assistant. Be supportive and medically cautious."},
-                    {"role": "user", "content": prompt},
-                ],
-            )
-            ai_text = resp.choices[0].message.content.strip()
-        except Exception:
-            ai_text = None
-
-    if not ai_text:
-        # fallback insight
-        ai_text = (
-            f"- Avg cycle: {avg_cycle} days\n"
-            f"- Next period: {predicted_next}\n"
-            f"- Fertile window: {fertile_start} to {fertile_end}\n"
-            f"- Most common symptoms: {', '.join(top_symptoms) if top_symptoms else 'none'}\n"
-            f"- Most common moods: {', '.join(top_moods) if top_moods else 'none'}\n"
-        )
+    if days_until_period < 0:
+        phase = "Late cycle / period might be due"
+    elif days_until_period <= 5:
+        phase = "PMS phase likely"
+    elif fertile_start <= today <= fertile_end:
+        phase = "Fertile window"
+    else:
+        phase = "Normal cycle phase"
 
     return Response({
-        "avg_cycle": avg_cycle,
-        "avg_period": avg_period,
-        "predicted_next_period": str(predicted_next),
-        "ovulation_estimate": str(ovulation),
+        "avg_cycle": round(avg_cycle, 1),
+        "avg_period": round(avg_period, 1),
+        "std_cycle": round(std, 1),
+        "confidence": confidence,
+
+        "next_period": str(next_period),
+        "days_until_period": days_until_period,
+
+        "ovulation": str(ovulation),
         "fertile_window": {
             "start": str(fertile_start),
-            "end": str(fertile_end),
+            "end": str(fertile_end)
         },
-        "top_moods": top_moods,
-        "top_symptoms": top_symptoms,
-        "warnings": warnings,
-        "ai_summary": ai_text,
-    })
 
+        "phase": phase,
+        "predicted_moods": top_moods,
+        "predicted_symptoms": top_symptoms,
+    })
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def mood_logs(request):
+    """
+    GET  -> list current user's mood logs
+    POST -> create a mood log (one per day due to unique_together)
+    """
+    if request.method == "GET":
+        logs = MoodLog.objects.filter(user=request.user).order_by("-date")
+        return Response(MoodLogSerializer(logs, many=True).data, status=200)
+
+    # POST
+    ser = MoodLogSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response(ser.errors, status=400)
+
+    # Save with user
+    try:
+        mood_obj = MoodLog.objects.create(
+            user=request.user,
+            date=ser.validated_data["date"],
+            mood=ser.validated_data["mood"],
+            intensity=ser.validated_data.get("intensity", 5),
+            note=ser.validated_data.get("note", ""),
+        )
+        return Response(MoodLogSerializer(mood_obj).data, status=201)
+    except Exception:
+        # likely unique_together conflict
+        return Response(
+            {"error": "Mood for this date already exists. Edit or delete it."},
+            status=400
+        )
+
+
+@api_view(["PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def mood_log_detail(request, pk):
+    try:
+        log = MoodLog.objects.get(pk=pk, user=request.user)
+    except MoodLog.DoesNotExist:
+        return Response({"error": "Not found"}, status=404)
+
+    if request.method == "DELETE":
+        log.delete()
+        return Response({"message": "Deleted"}, status=200)
+
+    # PUT
+    ser = MoodLogSerializer(log, data=request.data, partial=True)
+    if ser.is_valid():
+        ser.save()
+        return Response(ser.data, status=200)
+    return Response(ser.errors, status=400)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def symptom_logs(request):
+    if request.method == "GET":
+        logs = SymptomLog.objects.filter(user=request.user).order_by("-date")
+        return Response(SymptomLogSerializer(logs, many=True).data, status=200)
+
+    ser = SymptomLogSerializer(data=request.data)
+    if not ser.is_valid():
+        return Response(ser.errors, status=400)
+
+    try:
+        obj = SymptomLog.objects.create(
+            user=request.user,
+            date=ser.validated_data["date"],
+            symptoms=ser.validated_data.get("symptoms", []),
+            severity=ser.validated_data.get("severity", 5),
+            note=ser.validated_data.get("note", "")
+        )
+        return Response(SymptomLogSerializer(obj).data, status=201)
+
+    except Exception:
+        return Response({"error": "Symptoms for this date already exist."}, status=400)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_symptom_log(request, pk):
+    try:
+        log = SymptomLog.objects.get(pk=pk, user=request.user)
+    except SymptomLog.DoesNotExist:
+        return Response({"error": "Not found"}, status=404)
+
+    log.delete()
+    return Response({"message": "Deleted"}, status=200)

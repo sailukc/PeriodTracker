@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PeriodLog, UserProfile, ChatMessage
+from .models import PeriodLog, UserProfile, ChatMessage, MoodLog, SymptomLog
 
 class PeriodLogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,4 +30,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
-        fields = ["id", "role", "content", "created_at"]        
+        fields = ["id", "role", "content", "created_at"]      
+class MoodLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MoodLog
+        fields = ["id", "date", "mood", "intensity", "note", "created_at"]  
+class SymptomLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SymptomLog
+        fields = ["id", "date", "symptoms", "severity", "note", "created_at"]

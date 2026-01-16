@@ -4,23 +4,44 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Chatbot • Period Tracker</title>
+
   <link rel="stylesheet" href="../css/style.css" />
 
   <script defer src="../js/config.js"></script>
-  <script defer src="../js/api.js"></script>
   <script defer src="../js/auth.js"></script>
   <script defer src="../js/app.js"></script>
+  <script defer src="../js/chatbot.js"></script>
 </head>
 <body>
+  <!-- Navbar -->
   <div id="navbar"></div>
 
   <div class="container">
     <h2>Chatbot</h2>
+
     <div class="card">
-      <p>Coming next: Flo-style chatbot + AI health insights.</p>
+      <div id="chatBox" class="chat-box">
+        <div class="bubble bot">
+          Hi! Ask me anything about cycles, cramps, mood, and tracking tips.
+          (I’m not a doctor.)
+        </div>
+      </div>
+
+      <div class="chat-input-row">
+  <input id="chatInput" type="text" placeholder="Ask about periods, cramps, cycle etc..." />
+  <button id="sendBtn">Send</button>
+  <button id="clearBtn" class="btn-secondary">Clear</button>
+</div>
+
+<p id="typing" style="margin-top:10px; display:none;">AI is typing...</p>
+      <p id="chat_msg" style="color:red; margin-top:10px;"></p>
     </div>
   </div>
 
-  <script>requireAuth();</script>
+  <script>
+    // Protect page
+    requireAuth();
+    loadNavbar();
+  </script>
 </body>
 </html>

@@ -1,3 +1,10 @@
+// frontend/js/auth.js
+console.log("auth.js loaded ✅");
+
+// If you have frontend/js/config.js, it should set: window.API_BASE = "http://127.0.0.1:8000";
+const API_BASE = window.API_BASE || "http://127.0.0.1:8000";
+
+/* ---------- AUTH HELPERS ---------- */
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -12,43 +19,51 @@ function requireAuth() {
   return true;
 }
 
-function authHeaders({ json = true } = {}) {
+function logout() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("username");
+  window.location.href = "login.html";
+}
+
+function authHeaders(json = true) {
   const token = getToken();
-  const headers = {};
+  const headers = { Authorization: `Token ${token}` };
   if (json) headers["Content-Type"] = "application/json";
-  if (token) headers["Authorization"] = `Token ${token}`;
   return headers;
 }
 
-function buildURL(path) {
-  const base = window.API_BASE || "http://127.0.0.1:8000";
+/* ---------- URL HELPER (prevents double base URL bug) ---------- */
+function withBase(urlOrPath) {
+  if (!urlOrPath) return API_BASE;
 
-  if (!path) return base;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/")) return base + path;
-  return base + "/" + path;
+  // already full URL
+  if (urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) {
+    return urlOrPath;
+  }
+
+  // ensure single slash between base and path
+  if (urlOrPath.startsWith("/")) return `${API_BASE}${urlOrPath}`;
+  return `${API_BASE}/${urlOrPath}`;
 }
 
-// ✅ Global helper for all API calls
-async function fetchJSON(path, options = {}) {
-  const url = buildURL(path);
+/* ---------- API HELPER ---------- */
+async function fetchJSON(pathOrUrl, options = {}) {
+  const url = withBase(pathOrUrl);
 
   const res = await fetch(url, options);
 
-  // parse response safely
-  const raw = await res.text();
   let data = null;
   try {
-    data = raw ? JSON.parse(raw) : null;
-  } catch {
-    data = raw || null;
+    data = await res.json();
+  } catch (e) {
+    data = null;
   }
 
   if (!res.ok) {
-    const msg =
-      (data && (data.detail || data.error || data.message)) ||
-      `Request failed (${res.status})`;
-    throw new Error(msg);
+    throw new Error(
+      (data && (data.error || data.detail)) || `Request failed (${res.status})`
+    );
   }
+
   return data;
 }

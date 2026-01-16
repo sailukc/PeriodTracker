@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Insights • Period Tracker</title>
+
   <link rel="stylesheet" href="../css/style.css" />
 
   <script defer src="../js/config.js"></script>
-  <script defer src="../js/api.js"></script>
   <script defer src="../js/auth.js"></script>
   <script defer src="../js/app.js"></script>
   <script defer src="../js/insights.js"></script>
@@ -17,12 +17,23 @@
 
   <div class="container">
     <h2>Insights</h2>
+
     <div class="card">
-      <div id="insightsBox"></div>
-      <p id="ins_msg" style="color:red;"></p>
+      <h3>Your Insights</h3>
+
+      <div id="insightsBox">Loading insights...</div>
+      <p id="ins_msg" style="color:red; margin-top:10px;"></p>
+
+      <hr style="margin:16px 0;" />
+
+      <button id="aiExplainBtn">Explain with AI</button>
+      <div id="aiInsightBox" style="margin-top:12px;"></div>
     </div>
   </div>
 
-  <script>requireAuth();</script>
+  <script>
+    requireAuth();
+    loadNavbar();
+  </script>
 </body>
 </html>

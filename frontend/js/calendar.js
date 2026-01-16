@@ -17,7 +17,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     render();
   });
 
-  const setMsg = (t) => { if (calMsg) calMsg.innerText = t || ""; };
+  const setMsg = (t) => {
+    if (calMsg) calMsg.innerText = t || "";
+  };
 
   const ymd = (d) => {
     const y = d.getFullYear();
@@ -26,31 +28,101 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${y}-${m}-${day}`;
   };
 
-  function rangeDates(start, end) {
-    const out = [];
+  const parseYMD = (s) => {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  const addDays = (d, n) => {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  };
+
+  const daysBetween = (a, b) =>
+    Math.round((b - a) / (1000 * 60 * 60 * 24));
+
+  const avg = (arr) => {
+    if (!arr.length) return null;
+    return Math.round((arr.reduce((x, y) => x + y, 0) / arr.length) * 10) / 10;
+  };
+
+  function rangeDatesSet(start, end) {
+    const out = new Set();
     let d = new Date(start);
     while (d <= end) {
-      out.push(ymd(d));
+      out.add(ymd(d));
       d.setDate(d.getDate() + 1);
     }
     return out;
   }
 
-  async function getPeriodDaysSet() {
-    const logs = await fetchJSON("/api/period-logs/", {
+  async function loadLogs() {
+    return await fetchJSON("/api/period-logs/", {
       method: "GET",
       headers: authHeaders(),
     });
+  }
 
-    const days = new Set();
-    logs.forEach((log) => {
+  function buildCalendarMarks(logs) {
+    const periodDays = new Set();
+    const fertileDays = new Set();
+    let ovulationKey = null;
+    let nextPeriodKey = null;
+
+    if (!Array.isArray(logs) || logs.length === 0) {
+      return { periodDays, fertileDays, ovulationKey, nextPeriodKey };
+    }
+
+    // sort oldest -> newest
+    const sorted = [...logs].sort((a, b) =>
+      (a.start_date || "").localeCompare(b.start_date || "")
+    );
+
+    // PERIOD days
+    sorted.forEach((log) => {
       if (!log.start_date || !log.end_date) return;
-      const s = new Date(log.start_date);
-      const e = new Date(log.end_date);
-      rangeDates(s, e).forEach((d) => days.add(d));
+      const s = parseYMD(log.start_date);
+      const e = parseYMD(log.end_date);
+      const set = rangeDatesSet(s, e);
+      set.forEach((d) => periodDays.add(d));
     });
 
-    return days;
+    // Average cycle length
+    const manualCycles = sorted
+      .map((l) => Number(l.cycle_length))
+      .filter((n) => Number.isFinite(n) && n > 0);
+
+    const computedCycles = [];
+    for (let i = 0; i < sorted.length - 1; i++) {
+      if (!sorted[i].start_date || !sorted[i + 1].start_date) continue;
+      const s1 = parseYMD(sorted[i].start_date);
+      const s2 = parseYMD(sorted[i + 1].start_date);
+      const diff = daysBetween(s1, s2);
+      if (diff > 0 && diff < 60) computedCycles.push(diff);
+    }
+
+    const avgCycle = avg(manualCycles.length >= 2 ? manualCycles : computedCycles) || 28;
+
+    // Use last start date for predictions
+    const lastStart = parseYMD(sorted[sorted.length - 1].start_date);
+
+    // Next period estimate
+    const nextPeriod = addDays(lastStart, Math.round(avgCycle));
+    nextPeriodKey = ymd(nextPeriod);
+
+    // Ovulation estimate (avgCycle - 14)
+    const ovOffset = Math.max(10, Math.round(avgCycle) - 14);
+    const ovDate = addDays(lastStart, ovOffset);
+    ovulationKey = ymd(ovDate);
+
+    // Fertile window: ovulation -5 to ovulation +1
+    const fertileStart = addDays(ovDate, -5);
+    const fertileEnd = addDays(ovDate, 1);
+    const fertileSet = rangeDatesSet(fertileStart, fertileEnd);
+    fertileSet.forEach((d) => fertileDays.add(d));
+
+    return { periodDays, fertileDays, ovulationKey, nextPeriodKey };
   }
 
   async function render() {
@@ -68,9 +140,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     const first = new Date(year, month, 1);
-    const startDay = first.getDay();
+    const startDay = first.getDay(); // 0 Sun
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+    // week day names
     const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     names.forEach((n) => {
       const el = document.createElement("div");
@@ -86,11 +159,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       grid.appendChild(blank);
     }
 
-    let periodDays = new Set();
+    let marks = {
+      periodDays: new Set(),
+      fertileDays: new Set(),
+      ovulationKey: null,
+      nextPeriodKey: null,
+    };
+
     try {
-      periodDays = await getPeriodDaysSet();
+      const logs = await loadLogs();
+      marks = buildCalendarMarks(logs);
     } catch (e) {
-      setMsg(e.message);
+      setMsg(e.message || "Failed to load logs.");
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -101,7 +181,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       cell.className = "day-cell";
       cell.innerText = day;
 
-      if (periodDays.has(key)) cell.classList.add("period-day");
+      // Order matters (so important markers win visually)
+      if (marks.fertileDays.has(key)) cell.classList.add("fertile-day");
+      if (marks.ovulationKey === key) cell.classList.add("ovulation-day");
+      if (marks.nextPeriodKey === key) cell.classList.add("next-period-day");
+      if (marks.periodDays.has(key)) cell.classList.add("period-day");
 
       grid.appendChild(cell);
     }

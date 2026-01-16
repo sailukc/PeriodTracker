@@ -4,23 +4,64 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Mood • Period Tracker</title>
+
   <link rel="stylesheet" href="../css/style.css" />
 
   <script defer src="../js/config.js"></script>
-  <script defer src="../js/api.js"></script>
   <script defer src="../js/auth.js"></script>
   <script defer src="../js/app.js"></script>
+  <script defer src="../js/mood.js"></script>
 </head>
+
 <body>
   <div id="navbar"></div>
 
   <div class="container">
     <h2>Mood Tracker</h2>
+
     <div class="card">
-      <p>Coming next: mood logging + AI mood prediction.</p>
+      <h3>Log your mood</h3>
+
+      <label>Date</label>
+      <input id="moodDate" type="date" />
+
+      <label>Mood</label>
+      <select id="moodValue">
+  <option value="">-- Select --</option>
+  <option value="happy">Happy</option>
+  <option value="calm">Calm</option>
+  <option value="sad">Sad</option>
+  <option value="anxious">Anxious</option>
+  <option value="irritated">Irritated</option>
+  <option value="tired">Tired</option>
+  <option value="stressed">Stressed</option>
+</select>
+
+
+      <label>Intensity (1–10)</label>
+      <input id="moodIntensity" type="number" min="1" max="10" value="5" />
+
+      <label>Note (optional)</label>
+      <textarea id="moodNote" rows="3" placeholder="Any details..."></textarea>
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button id="saveMoodBtn">Save Mood</button>
+        <button id="aiMoodBtn" type="button">Get AI Tip</button>
+      </div>
+
+      <p id="mood_msg" style="color:red; margin-top:10px;"></p>
+      <div id="aiMoodBox" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>Your Mood History</h3>
+      <div id="moodList">Loading...</div>
     </div>
   </div>
 
-  <script>requireAuth();</script>
+  <script>
+    requireAuth();
+    loadNavbar();
+  </script>
 </body>
 </html>

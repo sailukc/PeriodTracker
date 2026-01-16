@@ -19,17 +19,43 @@
     <h2>Dashboard</h2>
 
     <div class="card">
-      <p id="welcomeText"></p>
+  <p id="welcomeText"></p>
 
-      <h3>Recent Period Logs</h3>
-      <div id="recent_logs"></div>
+  <h3>Predictions</h3>
+  <div id="cycleBox"></div>
+  <div id="fertileBox"></div>
+  <h3>Cycle Progress</h3>
 
-      <div style="margin-top:16px;">
-        <a class="btn" href="period_log.html">+ Add / View Logs</a>
-      </div>
-    </div>
+<div class="phase-wrap">
+  <div class="phase-bar">
+    <div id="phaseFill" class="phase-fill"></div>
   </div>
 
-  <script>requireAuth();</script>
+  <div class="phase-labels">
+    <span>Menstrual</span>
+    <span>Follicular</span>
+    <span>Ovulation</span>
+    <span>Luteal</span>
+  </div>
+
+  <p class="muted" id="phaseText"></p>
+  <p class="muted" id="fertileLeft"></p>
+</div>
+
+
+  <h3>Recent Period Logs</h3>
+  <div id="recent_logs"></div>
+
+  <div style="margin-top:16px;">
+    <a class="btn" href="period_log.html">+ Add / View Logs</a>
+  </div>
+</div>
+
+  </div>
+
+  <script>
+    requireAuth();
+    loadNavbar();
+  </script>
 </body>
 </html>

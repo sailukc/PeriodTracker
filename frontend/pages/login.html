@@ -4,27 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Login • Period Tracker</title>
+
   <link rel="stylesheet" href="../css/style.css" />
 
-  <link rel="stylesheet" href="../css/style.css">
-
-<script defer src="../js/config.js"></script>
-<script defer src="../js/auth.js"></script>
-<script defer src="../js/login.js"></script>
+  <!-- Load config first (API_BASE), then auth (fetchJSON), then page script -->
+  <script defer src="/frontend/js/config.js"></script>
+<script defer src="/frontend/js/auth.js"></script>
+<script defer src="/frontend/js/login.js"></script>
 
 </head>
+
 <body>
   <div class="container">
     <h2>Login</h2>
 
     <div class="card">
-      <label>Username</label>
-      <input id="username" type="text" placeholder="Enter username" />
+      <label for="username">Username</label>
+      <input id="username" type="text" placeholder="Enter username" autocomplete="username" />
 
-      <label>Password</label>
-      <input id="password" type="password" placeholder="Enter password" />
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Enter password" autocomplete="current-password" />
 
-      <button type="button" id="loginBtn">Login</button>
+      <button id="loginBtn" type="button">Login</button>
 
       <p id="login_msg" style="color:red; margin-top:10px;"></p>
       <p style="margin-top:10px;">No account? <a href="register.html">Register</a></p>
